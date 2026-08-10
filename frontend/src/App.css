@@ -1,0 +1,66 @@
+/* ── Reset & Base ────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background-color: #0f172a;
+  color: #e2e8f0;
+  min-height: 100vh;
+}
+
+/* ── Placeholder Pages ──────────────────────────────────────────── */
+.placeholder-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  min-height: 100vh;
+  padding: 2rem;
+  text-align: center;
+}
+
+.placeholder-page h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #818cf8;
+}
+
+.placeholder-page h2 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: #a5b4fc;
+}
+
+.placeholder-page p {
+  color: #94a3b8;
+  font-size: 1rem;
+}
+
+.placeholder-page nav {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.placeholder-page a {
+  color: #6366f1;
+  text-decoration: none;
+  font-weight: 500;
+  padding: 0.5rem 1.25rem;
+  border: 1px solid #6366f1;
+  border-radius: 0.5rem;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.placeholder-page a:hover {
+  background-color: #6366f1;
+  color: #ffffff;
+}
