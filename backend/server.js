@@ -3,8 +3,13 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const connectDB = require('./src/config/db');
 
+// ─── Load environment variables ───────────────────────────────────────────────
 dotenv.config();
+
+// ─── Connect to MongoDB ───────────────────────────────────────────────────────
+connectDB();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -14,7 +19,12 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ─── Health Check Route ────────────────────────────────────────────────────────
+// ─── Routes ───────────────────────────────────────────────────────────────────
+const authRoutes = require('./src/routes/authRoutes');
+
+app.use('/api/auth', authRoutes);
+
+// ─── Health Check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'OK',
@@ -44,4 +54,4 @@ app.listen(PORT, () => {
   console.log(`📋 Health check: http://localhost:${PORT}/health`);
 });
 
-module.exports = app; // export for testing
+module.exports = app;
