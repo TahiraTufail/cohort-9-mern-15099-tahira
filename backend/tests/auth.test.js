@@ -29,11 +29,11 @@ describe('Auth Routes', () => {
     const uri = mongoServer.getUri();
     process.env.MONGO_URI = uri;
 
-    // Require app here so it reads the in-memory connection string
-    app = require('../server');
+    if (mongoose.connection.readyState === 0) {
+      await mongoose.connect(uri);
+    }
 
-    // Wait a brief moment for the async DB connection to complete
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    app = require('../server');
   });
 
   after(async () => {
