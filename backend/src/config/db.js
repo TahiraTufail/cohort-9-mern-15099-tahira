@@ -1,6 +1,7 @@
 'use strict';
 
 const mongoose = require('mongoose');
+const logger = require('./logger');
 
 /**
  * Connect to MongoDB using the URI defined in environment variables.
@@ -8,9 +9,10 @@ const mongoose = require('mongoose');
 const connectDB = async () => {
   try {
     const conn = await mongoose.connect(process.env.MONGO_URI);
-    console.log(`✅ MongoDB connected: ${conn.connection.host}`);
+    logger.info(`✅ MongoDB connected: ${conn.connection.host}`);
+    return conn;
   } catch (error) {
-    console.error(`❌ MongoDB connection error: ${error.message}`);
+    logger.error(`❌ MongoDB connection error: ${error.message}`);
     process.exit(1);
   }
 };
