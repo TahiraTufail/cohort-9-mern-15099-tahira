@@ -3,6 +3,10 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
+/**
+ * User Schema
+ * Represents an authenticated user of the application.
+ */
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -25,9 +29,16 @@ const userSchema = new mongoose.Schema(
       minlength: [6, 'Password must be at least 6 characters'],
       select: false, // never returned in queries by default
     },
+    phone: {
+      type: String,
+      trim: true,
+      match: [/^\+?[\d\s\-().]{7,20}$/, 'Please provide a valid phone number'],
+    },
   },
   { timestamps: true }
 );
+
+// pre-save hook to hash password before storing
 
 userSchema.pre('save', async function () {
   if (!this.isModified('password')) return;
