@@ -1,11 +1,18 @@
 'use strict';
 
-const chai = require('chai');
+const originalChai = require('chai');
 const chaiHttp = require('chai-http');
-const app = require('../server');
+const mongoose = require('mongoose');
+const { MongoMemoryServer } = require('mongodb-memory-server');
 
-chai.use(chaiHttp);
-const { expect } = chai;
+originalChai.use(chaiHttp.default || chaiHttp);
+const chai = Object.create(originalChai, {
+  request: { value: chaiHttp.request.execute, enumerable: true },
+});
+const { expect } = originalChai;
+
+let mongoServer;
+let app;
 
 // ─── Auth Route Tests ─────────────────────────────────────────────────────────
 describe('Auth Routes', () => {
@@ -15,6 +22,24 @@ describe('Auth Routes', () => {
     password: 'Password123',
   };
   let authToken;
+
+  before(async function () {
+    this.timeout(30000);
+    mongoServer = await MongoMemoryServer.create();
+    const uri = mongoServer.getUri();
+    process.env.MONGO_URI = uri;
+
+    // Require app here so it reads the in-memory connection string
+    app = require('../server');
+
+    // Wait a brief moment for the async DB connection to complete
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+  });
+
+  after(async () => {
+    await mongoose.disconnect();
+    await mongoServer.stop();
+  });
 
   // ── POST /api/auth/register ───────────────────────────────────────────────
   describe('POST /api/auth/register', () => {
@@ -37,7 +62,10 @@ describe('Auth Routes', () => {
     });
 
     it('should return 400 if required fields are missing', async () => {
-      const res = await chai.request(app).post('/api/auth/register').send({ email: 'missing@test.com' });
+      const res = await chai
+        .request(app)
+        .post('/api/auth/register')
+        .send({ email: 'missing@test.com' });
 
       expect(res).to.have.status(400);
       expect(res.body.status).to.equal('error');
@@ -77,7 +105,10 @@ describe('Auth Routes', () => {
     });
 
     it('should return 400 if fields are missing', async () => {
-      const res = await chai.request(app).post('/api/auth/login').send({ email: testUser.email });
+      const res = await chai
+        .request(app)
+        .post('/api/auth/login')
+        .send({ email: testUser.email });
 
       expect(res).to.have.status(400);
     });

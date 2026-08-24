@@ -3,16 +3,32 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const pinoHttp = require('pino-http');
 const connectDB = require('./src/config/db');
+const logger = require('./src/config/logger');
+const errorHandler = require('./src/middlewares/errorHandler');
 
 // ─── Load environment variables ───────────────────────────────────────────────
 dotenv.config();
 
-// ─── Connect to MongoDB ───────────────────────────────────────────────────────
-connectDB();
-
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// ─── Logger Middleware ─────────────────────────────────────────────────────────
+app.use(
+  pinoHttp({
+    logger,
+    serializers: {
+      req: (req) => ({
+        method: req.method,
+        url: req.url,
+      }),
+      res: (res) => ({
+        statusCode: res.statusCode,
+      }),
+    },
+  })
+);
 
 // ─── Middleware ────────────────────────────────────────────────────────────────
 app.use(cors());
@@ -34,24 +50,31 @@ app.get('/health', (req, res) => {
 });
 
 // ─── 404 Handler ──────────────────────────────────────────────────────────────
-app.use((req, res) => {
-  res.status(404).json({ status: 'error', message: 'Route not found' });
+app.use((req, res, next) => {
+  const error = new Error('Route not found');
+  error.statusCode = 404;
+  next(error);
 });
 
 // ─── Global Error Handler ─────────────────────────────────────────────────────
-// eslint-disable-next-line no-unused-vars
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(err.status || 500).json({
-    status: 'error',
-    message: err.message || 'Internal Server Error',
-  });
-});
+app.use(errorHandler);
 
 // ─── Start Server ─────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📋 Health check: http://localhost:${PORT}/health`);
-});
+const startServer = async () => {
+  try {
+    logger.info('Connecting to MongoDB...');
+    await connectDB();
+
+    app.listen(PORT, () => {
+      logger.info(`🚀 Server running on http://localhost:${PORT}`);
+      logger.info(`📋 Health check: http://localhost:${PORT}/health`);
+    });
+  } catch (error) {
+    logger.error(`❌ Failed to start server: ${error.message}`);
+    process.exit(1);
+  }
+};
+
+startServer();
 
 module.exports = app;
