@@ -1,6 +1,17 @@
 import axios from 'axios';
 
-const API_URL = import.meta?.env?.VITE_API_URL || 'http://localhost:5000/api';
+const getApiUrl = () => {
+  try {
+    // In Vite, import.meta.env is statically replaced during dev/build.
+    // In Jest Node environment, this dynamic evaluation prevents SyntaxError.
+    const meta = new Function('return import.meta')();
+    return meta?.env?.VITE_API_URL || 'http://localhost:5000/api';
+  } catch {
+    return (typeof process !== 'undefined' && process.env?.VITE_API_URL) || 'http://localhost:5000/api';
+  }
+};
+
+const API_URL = getApiUrl();
 
 const api = axios.create({
   baseURL: API_URL,

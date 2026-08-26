@@ -11,6 +11,8 @@
     "test": "jest"
   },
   "dependencies": {
+    "@tiptap/react": "^3.30.5",
+    "@tiptap/starter-kit": "^3.30.5",
     "axios": "^1.19.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
@@ -27,6 +29,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
     "babel-jest": "^30.4.1",
+    "babel-plugin-transform-import-meta": "^3.0.0",
     "jest": "^30.4.2",
     "jest-environment-jsdom": "^30.4.1",
     "oxlint": "^1.75.0",

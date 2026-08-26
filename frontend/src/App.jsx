@@ -1,64 +1,43 @@
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import Dashboard from './pages/Dashboard';
 import './App.css';
 
-// ─── Placeholder Page Components ──────────────────────────────────────────────
-// These will be replaced by real page files under src/pages/ in future sprints.
-
-const Home = () => (
-  <div className="placeholder-page">
-    <h1>📝 Notes App</h1>
-    <p>Welcome! Navigate to a page:</p>
-    <nav>
-      <Link to="/login">Login</Link>
-      <Link to="/signup">Signup</Link>
-      <Link to="/dashboard">Dashboard</Link>
-    </nav>
-  </div>
-);
-
-const Login = () => (
-  <div className="placeholder-page">
-    <h2>🔐 Login</h2>
-    <p>Login page — coming soon.</p>
-    <Link to="/">← Back to Home</Link>
-  </div>
-);
-
-const Signup = () => (
-  <div className="placeholder-page">
-    <h2>📋 Sign Up</h2>
-    <p>Signup page — coming soon.</p>
-    <Link to="/">← Back to Home</Link>
-  </div>
-);
-
-const Dashboard = () => (
-  <div className="placeholder-page">
-    <h2>🗂️ Dashboard</h2>
-    <p>Dashboard page — coming soon.</p>
-    <Link to="/">← Back to Home</Link>
-  </div>
-);
-
 const NotFound = () => (
-  <div className="placeholder-page">
-    <h2>404 — Page Not Found</h2>
-    <Link to="/">← Back to Home</Link>
+  <div className="auth-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+    <div style={{ textAlign: 'center' }}>
+      <h2 style={{ fontSize: '2rem', marginBottom: '1rem', color: 'var(--primary)' }}>404 — Page Not Found</h2>
+      <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>The page you requested does not exist.</p>
+      <a href="/dashboard" className="btn-primary" style={{ display: 'inline-block', textDecoration: 'none', padding: '0.75rem 1.5rem', width: 'auto' }}>
+        Go to Dashboard
+      </a>
+    </div>
   </div>
 );
 
-// ─── App with Routing ─────────────────────────────────────────────────────────
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 
