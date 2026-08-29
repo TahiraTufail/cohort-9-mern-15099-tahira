@@ -252,4 +252,175 @@ describe('Notes CRUD API Tests', () => {
       expect(checkRes).to.have.status(404);
     });
   });
+
+  // ── PATCH /api/notes/:id/pin (Pin Toggle) ─────────────────────────────────
+  describe('PATCH /api/notes/:id/pin', () => {
+    it("should toggle a note's pinned state if owned by the user", async () => {
+      // Toggle once (false -> true)
+      const res1 = await chai
+        .request(app)
+        .patch(`/api/notes/${noteUserA._id}/pin`)
+        .set('Authorization', `Bearer ${tokenUserA}`);
+
+      expect(res1).to.have.status(200);
+      expect(res1.body.data.note.pinned).to.be.true;
+
+      // Toggle again (true -> false)
+      const res2 = await chai
+        .request(app)
+        .patch(`/api/notes/${noteUserA._id}/pin`)
+        .set('Authorization', `Bearer ${tokenUserA}`);
+
+      expect(res2).to.have.status(200);
+      expect(res2.body.data.note.pinned).to.be.false;
+    });
+
+    it("should return 404 when User B tries to pin User A's note (Ownership Check)", async () => {
+      const res = await chai
+        .request(app)
+        .patch(`/api/notes/${noteUserA._id}/pin`)
+        .set('Authorization', `Bearer ${tokenUserB}`);
+
+      expect(res).to.have.status(404);
+      expect(res.body.message).to.equal('Note not found');
+    });
+  });
+
+  // ── GET /api/notes (Search by Title) ──────────────────────────────────────
+  describe('GET /api/notes (Search by Title)', () => {
+    beforeEach(async () => {
+      // Create additional notes for User A
+      await chai.request(app).post('/api/notes').set('Authorization', `Bearer ${tokenUserA}`).send({
+        title: 'Meeting Sprint Review',
+        content: 'Sprint review details'
+      });
+      await chai.request(app).post('/api/notes').set('Authorization', `Bearer ${tokenUserA}`).send({
+        title: 'Grocery checklist',
+        content: 'Milk, bread'
+      });
+    });
+
+    it("should support case-insensitive partial title matching for authenticated user", async () => {
+      const res = await chai
+        .request(app)
+        .get('/api/notes?search=sprint')
+        .set('Authorization', `Bearer ${tokenUserA}`);
+
+      expect(res).to.have.status(200);
+      expect(res.body.results).to.equal(1);
+      expect(res.body.data.notes[0].title).to.equal('Meeting Sprint Review');
+    });
+
+    it("should respect user ownership boundaries when searching", async () => {
+      // User B searches for "Sprint" which User A has
+      const resB = await chai
+        .request(app)
+        .get('/api/notes?search=sprint')
+        .set('Authorization', `Bearer ${tokenUserB}`);
+
+      expect(resB).to.have.status(200);
+      expect(resB.body.results).to.equal(0);
+    });
+
+    it("should return all user notes if search parameter is empty", async () => {
+      const res = await chai
+        .request(app)
+        .get('/api/notes?search=')
+        .set('Authorization', `Bearer ${tokenUserA}`);
+
+      expect(res).to.have.status(200);
+      // User A has "User A's First Note", "Meeting Sprint Review", and "Grocery checklist"
+      expect(res.body.results).to.equal(3);
+    });
+  });
+
+  // ── Import / Export Notes ────────────────────────────────────────────────
+  describe('Import / Export Notes API', () => {
+    it("should export only authenticated user's notes in correct portable format", async () => {
+      // Create a note for User B to ensure it is not exported
+      await chai.request(app).post('/api/notes').set('Authorization', `Bearer ${tokenUserB}`).send({
+        title: "User B Note",
+        content: "B's content"
+      });
+
+      const res = await chai
+        .request(app)
+        .get('/api/notes/export')
+        .set('Authorization', `Bearer ${tokenUserA}`);
+
+      expect(res).to.have.status(200);
+      expect(res.headers['content-type']).to.include('application/json');
+      expect(res.body).to.be.an('array');
+      expect(res.body).to.have.lengthOf(1);
+      
+      const exportedNote = res.body[0];
+      expect(exportedNote).to.have.property('title', "User A's First Note");
+      expect(exportedNote).to.have.property('content', '<p>Content for User A</p>');
+      expect(exportedNote).to.have.property('pinned');
+      expect(exportedNote).to.have.property('createdAt');
+      expect(exportedNote).to.have.property('updatedAt');
+      expect(exportedNote).to.not.have.property('_id');
+      expect(exportedNote).to.not.have.property('user');
+    });
+
+    it("should import a list of notes, skip malformed entries, and report stats", async () => {
+      const importData = [
+        {
+          title: "Imported Note 1",
+          content: "Successful import content"
+        },
+        {
+          title: "", // invalid (empty title)
+          content: "Will be skipped"
+        },
+        {
+          title: "Imported Note 2",
+          content: "   " // invalid (empty content)
+        },
+        {
+          title: "Imported Note 3",
+          content: "Valid third note",
+          pinned: true
+        }
+      ];
+
+      const res = await chai
+        .request(app)
+        .post('/api/notes/import')
+        .set('Authorization', `Bearer ${tokenUserA}`)
+        .send(importData);
+
+      expect(res).to.have.status(200);
+      expect(res.body.status).to.equal('success');
+      expect(res.body.data.importedCount).to.equal(2);
+      expect(res.body.data.skippedCount).to.equal(2);
+      expect(res.body.data.errors).to.have.lengthOf(2);
+
+      // Verify the new notes were saved in User A's list
+      const listRes = await chai
+        .request(app)
+        .get('/api/notes')
+        .set('Authorization', `Bearer ${tokenUserA}`);
+
+      // User A originally had 1 note, now has 3
+      expect(listRes.body.results).to.equal(3);
+      
+      const titles = listRes.body.data.notes.map(n => n.title);
+      expect(titles).to.include("Imported Note 1");
+      expect(titles).to.include("Imported Note 3");
+      
+      const pinnedNote = listRes.body.data.notes.find(n => n.title === "Imported Note 3");
+      expect(pinnedNote.pinned).to.be.true;
+    });
+
+    it("should return 400 when importing a non-array body", async () => {
+      const res = await chai
+        .request(app)
+        .post('/api/notes/import')
+        .set('Authorization', `Bearer ${tokenUserA}`)
+        .send({ title: "Not an array", content: "Oops" });
+
+      expect(res).to.have.status(400);
+    });
+  });
 });

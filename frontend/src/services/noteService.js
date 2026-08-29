@@ -2,10 +2,12 @@ import api from './authService';
 
 /**
  * Fetch all notes for the logged-in user.
+ * @param {string} [search] Optional search query
  * @returns {Promise<Object>} Backend response { status: 'success', results: number, data: { notes: [] } }
  */
-export const getNotes = async () => {
-  const response = await api.get('/notes');
+export const getNotes = async (search) => {
+  const url = search ? `/notes?search=${encodeURIComponent(search)}` : '/notes';
+  const response = await api.get(url);
   return response.data;
 };
 
@@ -52,10 +54,42 @@ export const deleteNote = async (id) => {
   return response.data;
 };
 
+/**
+ * Toggle the pinned status of a note.
+ * @param {string} id
+ * @returns {Promise<Object>} Backend response { status: 'success', data: { note: {} } }
+ */
+export const pinNote = async (id) => {
+  const response = await api.patch(`/notes/${id}/pin`);
+  return response.data;
+};
+
+/**
+ * Export notes as a downloadable JSON blob.
+ * @returns {Promise<Blob>} Note content blob
+ */
+export const exportNotes = async () => {
+  const response = await api.get('/notes/export', { responseType: 'blob' });
+  return response.data;
+};
+
+/**
+ * Import notes array.
+ * @param {Array<Object>} notesArray
+ * @returns {Promise<Object>} Summary { status: 'success', data: { importedCount, skippedCount, errors } }
+ */
+export const importNotes = async (notesArray) => {
+  const response = await api.post('/notes/import', notesArray);
+  return response.data;
+};
+
 export default {
   getNotes,
   getNoteById,
   createNote,
   updateNote,
   deleteNote,
+  pinNote,
+  exportNotes,
+  importNotes,
 };

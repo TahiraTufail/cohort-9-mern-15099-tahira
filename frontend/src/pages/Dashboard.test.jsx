@@ -181,4 +181,206 @@ describe('Dashboard Component', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'New Note' })).toBeInTheDocument();
   });
+
+  test('filters notes by title with debounced search input', async () => {
+    jest.useFakeTimers();
+    noteService.getNotes.mockResolvedValue({
+      status: 'success',
+      data: { notes: [] },
+    });
+
+    render(<Dashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Search notes...')).toBeInTheDocument();
+    });
+
+    const searchInput = screen.getByPlaceholderText('Search notes...');
+    fireEvent.change(searchInput, { target: { value: 'Sprint' } });
+
+    // Assert getNotes is not immediately called with the value
+    expect(noteService.getNotes).not.toHaveBeenCalledWith('Sprint');
+
+    // Fast-forward time to fire debounce
+    jest.advanceTimersByTime(300);
+
+    await waitFor(() => {
+      expect(noteService.getNotes).toHaveBeenCalledWith('Sprint');
+    });
+
+    // Clear search
+    const clearBtn = screen.getByTitle('Clear search');
+    fireEvent.click(clearBtn);
+
+    expect(searchInput.value).toBe('');
+    
+    // Fast-forward debounce
+    jest.advanceTimersByTime(300);
+    
+    await waitFor(() => {
+      expect(noteService.getNotes).toHaveBeenLastCalledWith('');
+    });
+
+    jest.useRealTimers();
+  });
+
+  test('shows distinct empty state when search returns no matching notes', async () => {
+    jest.useFakeTimers();
+    noteService.getNotes.mockResolvedValue({
+      status: 'success',
+      data: { notes: [] },
+    });
+
+    render(<Dashboard />);
+
+    const searchInput = screen.getByPlaceholderText('Search notes...');
+    fireEvent.change(searchInput, { target: { value: 'MissingNoteTitle' } });
+    jest.advanceTimersByTime(300);
+
+    await waitFor(() => {
+      expect(screen.getByText('No matching notes found')).toBeInTheDocument();
+      expect(screen.getByText('Clear Search')).toBeInTheDocument();
+    });
+
+    jest.useRealTimers();
+  });
+
+  test('renders pinned and unpinned notes in separate sections', async () => {
+    const mockNotes = [
+      {
+        _id: '1',
+        title: 'Pinned Note 1',
+        content: 'Pinned content',
+        pinned: true,
+        updatedAt: '2026-08-25T10:00:00.000Z',
+      },
+      {
+        _id: '2',
+        title: 'Unpinned Note 1',
+        content: 'Unpinned content',
+        pinned: false,
+        updatedAt: '2026-08-24T10:00:00.000Z',
+      },
+    ];
+
+    noteService.getNotes.mockResolvedValue({
+      status: 'success',
+      data: { notes: mockNotes },
+    });
+
+    render(<Dashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Pinned')).toBeInTheDocument();
+      expect(screen.getByText('All Notes')).toBeInTheDocument();
+      expect(screen.getByText('Pinned Note 1')).toBeInTheDocument();
+      expect(screen.getByText('Unpinned Note 1')).toBeInTheDocument();
+    });
+  });
+
+  test('toggles pin optimistically and rolls back on failure', async () => {
+    const mockNotes = [
+      {
+        _id: 'note-pin-id',
+        title: 'Toggle Note',
+        content: 'Content',
+        pinned: false,
+        updatedAt: '2026-08-25T10:00:00.000Z',
+      },
+    ];
+
+    noteService.getNotes.mockResolvedValue({
+      status: 'success',
+      data: { notes: mockNotes },
+    });
+    noteService.pinNote.mockRejectedValueOnce(new Error('Network error'));
+
+    render(<Dashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Toggle Note')).toBeInTheDocument();
+    });
+
+    const pinBtn = screen.getByTitle('Pin note');
+    
+    // Trigger pin toggle
+    fireEvent.click(pinBtn);
+
+    // Optimistically becomes pinned (check section header or class/attribute)
+    expect(screen.getByText('Pinned')).toBeInTheDocument();
+
+    // After async failure, rolls back to unpinned
+    await waitFor(() => {
+      expect(screen.queryByText('Pinned')).not.toBeInTheDocument();
+      expect(screen.getByText('Failed to update pin status')).toBeInTheDocument();
+    });
+  });
+
+  test('triggers exportNotes API on Export button click', async () => {
+    noteService.getNotes.mockResolvedValue({ status: 'success', data: { notes: [] } });
+    noteService.exportNotes.mockResolvedValueOnce(new Blob(['[]'], { type: 'application/json' }));
+
+    // Mock URL object URL creation
+    window.URL.createObjectURL = jest.fn().mockReturnValue('blob:url-mock');
+
+    render(<Dashboard />);
+
+    const exportBtn = screen.getByTitle('Export notes');
+    fireEvent.click(exportBtn);
+
+    expect(noteService.exportNotes).toHaveBeenCalledTimes(1);
+  });
+
+  test('imports notes successfully from a valid JSON array file picker upload', async () => {
+    noteService.getNotes.mockResolvedValue({ status: 'success', data: { notes: [] } });
+    noteService.importNotes.mockResolvedValueOnce({
+      status: 'success',
+      data: { importedCount: 3, skippedCount: 0, errors: [] },
+    });
+
+    // Mock FileReader behavior
+    const dummyFile = new File(['[{"title": "Note"}]'], 'import.json', { type: 'application/json' });
+    const mockReader = {
+      readAsText: jest.fn().mockImplementation(function (file) {
+        this.onload({ target: { result: '[{"title": "Note"}]' } });
+      }),
+    };
+    jest.spyOn(global, 'FileReader').mockImplementation(() => mockReader);
+
+    render(<Dashboard />);
+
+    const fileInput = screen.getByTestId('import-file-input');
+    fireEvent.change(fileInput, { target: { files: [dummyFile] } });
+
+    await waitFor(() => {
+      expect(noteService.importNotes).toHaveBeenCalledWith([{ title: "Note" }]);
+      expect(screen.getByText('3 notes imported successfully')).toBeInTheDocument();
+    });
+
+    jest.restoreAllMocks();
+  });
+
+  test('displays file level warning when parsing invalid non-array JSON', async () => {
+    noteService.getNotes.mockResolvedValue({ status: 'success', data: { notes: [] } });
+    const dummyFile = new File(['{"not": "an array"}'], 'invalid.json', { type: 'application/json' });
+    
+    const mockReader = {
+      readAsText: jest.fn().mockImplementation(function (file) {
+        this.onload({ target: { result: '{"not": "an array"}' } });
+      }),
+    };
+    jest.spyOn(global, 'FileReader').mockImplementation(() => mockReader);
+
+    render(<Dashboard />);
+
+    const fileInput = screen.getByTestId('import-file-input');
+    fireEvent.change(fileInput, { target: { files: [dummyFile] } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Import failed: Selected JSON must be an array of notes')).toBeInTheDocument();
+      expect(noteService.importNotes).not.toHaveBeenCalled();
+    });
+
+    jest.restoreAllMocks();
+  });
 });

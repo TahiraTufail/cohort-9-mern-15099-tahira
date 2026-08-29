@@ -18,6 +18,10 @@ const noteSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Content is required'],
     },
+    pinned: {
+      type: Boolean,
+      default: false,
+    },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -29,8 +33,8 @@ const noteSchema = new mongoose.Schema(
   }
 );
 
-// Add index on the user field for faster lookups of a user's notes
-noteSchema.index({ user: 1 });
+// Add index on the user field for faster lookups of a user's notes, sorted by pinned and updatedAt
+noteSchema.index({ user: 1, pinned: -1, updatedAt: -1 });
 
 const Note = mongoose.model('Note', noteSchema);
 
