@@ -2,7 +2,7 @@
 
 const { expect } = require('chai');
 const mongoose = require('mongoose');
-const { MongoMemoryServer } = require('mongodb-memory-server');
+const { createMongoMemoryServer, stopMongoMemoryServer } = require('./helpers/mongoMemoryServer');
 const User = require('../src/models/User');
 const Note = require('../src/models/Note');
 
@@ -10,15 +10,16 @@ let mongoServer;
 
 describe('Database Schema Integration Tests', () => {
   before(async function () {
-    this.timeout(30000);
-    mongoServer = await MongoMemoryServer.create();
+    // MongoDB Memory Server downloads its binary once on a new machine.
+    this.timeout(10 * 60 * 1000);
+    mongoServer = await createMongoMemoryServer();
     const uri = mongoServer.getUri();
     await mongoose.connect(uri);
   });
 
   after(async () => {
     await mongoose.disconnect();
-    await mongoServer.stop();
+    await stopMongoMemoryServer(mongoServer);
   });
 
   beforeEach(async () => {

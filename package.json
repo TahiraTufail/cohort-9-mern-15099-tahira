@@ -1,0 +1,12 @@
+{
+  "name": "notes-app-mern",
+  "private": true,
+  "scripts": {
+    "test": "npm run test --prefix backend && npm run test --prefix frontend -- --runInBand",
+    "test:coverage": "npm run test:coverage --prefix backend && npm run test:coverage --prefix frontend",
+    "sonar:scan": "docker run --rm -e SONAR_HOST_URL=http://host.docker.internal:9000 -e SONAR_TOKEN -v \"%cd%:/usr/src\" sonarsource/sonar-scanner-cli",
+    "sonar:analyze": "npm run test:coverage && npm run sonar:scan",
+    "sonar:up": "docker compose -f docker-compose.sonarqube.yml up -d",
+    "sonar:down": "docker compose -f docker-compose.sonarqube.yml down"
+  }
+}

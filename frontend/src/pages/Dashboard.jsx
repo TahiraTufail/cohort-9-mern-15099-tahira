@@ -147,7 +147,7 @@ const Dashboard = () => {
       document.body.appendChild(link);
       link.click();
       link.parentNode.removeChild(link);
-    } catch (err) {
+    } catch {
       setError('Failed to export notes');
     }
   };
@@ -214,11 +214,15 @@ const Dashboard = () => {
   // Render Note Card Helper
   const renderNoteCard = (note) => {
     const isConfirmingDelete = deletingId === note._id;
+    const cardClasses = [
+      'note-card',
+      note.pinned && 'note-card--pinned',
+      isConfirmingDelete && 'note-card--confirming',
+    ].filter(Boolean).join(' ');
     return (
       <div
         key={note._id}
-        className={`note-card ${note.pinned ? 'note-card--pinned' : ''} ${isConfirmingDelete ? 'note-card--confirming' : ''}`}
-        onClick={() => !isConfirmingDelete && handleOpenEdit(note)}
+        className={cardClasses}
         data-testid="note-card"
       >
         <div className="note-card__header">
@@ -427,13 +431,13 @@ const Dashboard = () => {
         )}
 
         {importMessage && (
-          <div className="import-message" role="status">
+          <output className="import-message">
             {importMessage}
-          </div>
+          </output>
         )}
 
         {/* Notes Content */}
-        {loading ? (
+        {loading && (
           <div className="notes-grid" data-testid="notes-loading-skeletons">
             {[1, 2, 3].map((i) => (
               <div key={i} className="note-skeleton" data-testid="note-skeleton">
@@ -444,8 +448,8 @@ const Dashboard = () => {
               </div>
             ))}
           </div>
-        ) : notes.length === 0 ? (
-          searchQuery ? (
+        )}
+        {!loading && notes.length === 0 && searchQuery && (
             <div className="note-empty-state">
               <div className="empty-illustration-icon">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -465,7 +469,8 @@ const Dashboard = () => {
                 Clear Search
               </button>
             </div>
-          ) : (
+        )}
+        {!loading && notes.length === 0 && !searchQuery && (
             <div className="note-empty-state">
               <div className="empty-illustration-icon">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -487,8 +492,8 @@ const Dashboard = () => {
                 Create your first note
               </button>
             </div>
-          )
-        ) : (
+        )}
+        {!loading && notes.length > 0 && (
           <div className="notes-sections-wrapper">
             {/* Pinned Notes Grid Section */}
             {pinnedNotes.length > 0 && (

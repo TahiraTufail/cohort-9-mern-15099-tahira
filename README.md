@@ -123,3 +123,29 @@ The app will be available at `http://localhost:5173`.
 ## 🤝 Contributing
 
 Please create a branch from `develop`, follow the naming conventions above, and open a Pull Request for review before merging.
+
+---
+
+## SonarQube local code review
+
+SonarQube runs locally through Docker and analyzes both `backend` and `frontend`; the repository does not need to be public.
+
+```powershell
+# Optional: set SONAR_DB_PASSWORD in a root .env file first.
+npm run sonar:up
+```
+
+Wait until `http://localhost:9000` opens. Log in with `admin` / `admin`, change the default password, create a project with the key `cohort-9-mern-15099-tahira`, then create a project analysis token.
+
+```powershell
+$env:SONAR_TOKEN = "paste-the-project-token-here"
+npm run sonar:analyze
+```
+
+`sonar:analyze` first creates LCOV coverage reports from the Mocha and Jest suites, then uploads the local analysis. The token is intentionally kept out of project files and Git.
+
+To stop the local services without deleting analysis data:
+
+```powershell
+npm run sonar:down
+```

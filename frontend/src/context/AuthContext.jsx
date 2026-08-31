@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import PropTypes from 'prop-types';
 import { login as apiLogin, register as apiRegister } from '../services/authService';
 
 const AuthContext = createContext(null);
@@ -24,6 +25,8 @@ export const AuthProvider = ({ children }) => {
         setUser(JSON.parse(storedUser));
       }
     } catch {
+      setToken(null);
+      setUser(null);
       localStorage.removeItem('notes_token');
       localStorage.removeItem('notes_user');
     } finally {
@@ -31,7 +34,7 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const login = async (email, password) => {
+  const login = useCallback(async (email, password) => {
     const res = await apiLogin(email, password);
     const { token: newToken, user: newUser } = res.data;
 
@@ -42,9 +45,9 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('notes_user', JSON.stringify(newUser));
 
     return res;
-  };
+  }, []);
 
-  const register = async (name, email, password) => {
+  const register = useCallback(async (name, email, password) => {
     const res = await apiRegister(name, email, password);
     const { token: newToken, user: newUser } = res.data;
 
@@ -55,16 +58,16 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('notes_user', JSON.stringify(newUser));
 
     return res;
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setToken(null);
     setUser(null);
     localStorage.removeItem('notes_token');
     localStorage.removeItem('notes_user');
-  };
+  }, []);
 
-  const value = {
+  const value = useMemo(() => ({
     user,
     token,
     isAuthenticated: Boolean(token),
@@ -72,9 +75,13 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     register,
-  };
+  }), [user, token, loading, login, logout, register]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+AuthProvider.propTypes = {
+  children: PropTypes.node.isRequired,
 };
 
 export const useAuth = () => {

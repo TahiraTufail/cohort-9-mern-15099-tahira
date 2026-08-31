@@ -3,7 +3,7 @@
 const originalChai = require('chai');
 const chaiHttp = require('chai-http');
 const mongoose = require('mongoose');
-const { MongoMemoryServer } = require('mongodb-memory-server');
+const { createMongoMemoryServer, stopMongoMemoryServer } = require('./helpers/mongoMemoryServer');
 
 originalChai.use(chaiHttp.default || chaiHttp);
 const chai = Object.create(originalChai, {
@@ -22,8 +22,10 @@ describe('Notes CRUD API Tests', () => {
   let noteUserA;
 
   before(async function () {
-    this.timeout(30000);
-    mongoServer = await MongoMemoryServer.create();
+    // MongoDB Memory Server downloads its binary once on a new machine.
+    this.timeout(10 * 60 * 1000);
+    process.env.JWT_SECRET ||= 'test-only-jwt-secret';
+    mongoServer = await createMongoMemoryServer();
     const uri = mongoServer.getUri();
     process.env.MONGO_URI = uri;
 
@@ -31,12 +33,12 @@ describe('Notes CRUD API Tests', () => {
       await mongoose.connect(uri);
     }
 
-    app = require('../server');
+    app = require('../app');
   });
 
   after(async () => {
     await mongoose.disconnect();
-    await mongoServer.stop();
+    await stopMongoMemoryServer(mongoServer);
   });
 
   beforeEach(async () => {

@@ -3,6 +3,23 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
+const isValidEmail = (value) => {
+  if (typeof value !== 'string' || value.length > 254 || value.includes(' ')) return false;
+
+  const atIndex = value.indexOf('@');
+  if (atIndex <= 0 || atIndex !== value.lastIndexOf('@')) return false;
+
+  const localPart = value.slice(0, atIndex);
+  const domain = value.slice(atIndex + 1);
+  const lastDotIndex = domain.lastIndexOf('.');
+
+  return Boolean(localPart)
+    && lastDotIndex > 0
+    && lastDotIndex < domain.length - 1
+    && !domain.startsWith('.')
+    && !domain.endsWith('.');
+};
+
 /**
  * User Schema
  * Represents an authenticated user of the application.
@@ -21,7 +38,10 @@ const userSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       trim: true,
-      match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email address'],
+      validate: {
+        validator: isValidEmail,
+        message: 'Please provide a valid email address',
+      },
     },
     password: {
       type: String,

@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import PropTypes from 'prop-types';
 import { createNote, updateNote } from '../services/noteService';
 
 const NoteEditor = ({ isOpen, mode = 'create', note = null, onSave, onCancel }) => {
   const [title, setTitle] = useState('');
-  const [contentHtml, setContentHtml] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [confirmDiscard, setConfirmDiscard] = useState(false);
@@ -15,9 +15,6 @@ const NoteEditor = ({ isOpen, mode = 'create', note = null, onSave, onCancel }) 
   const editor = useEditor({
     extensions: [StarterKit],
     content: '',
-    onUpdate: ({ editor: ed }) => {
-      setContentHtml(ed.getHTML());
-    },
   });
 
   useEffect(() => {
@@ -31,7 +28,6 @@ const NoteEditor = ({ isOpen, mode = 'create', note = null, onSave, onCancel }) 
       setTitle(initTitle);
       setInitialTitle(initTitle);
 
-      setContentHtml(initContent);
       setInitialContent(initContent);
 
       if (editor) {
@@ -49,13 +45,12 @@ const NoteEditor = ({ isOpen, mode = 'create', note = null, onSave, onCancel }) 
     setError('');
 
     const trimmedTitle = title.trim();
-    // Get text content or HTML content for saving.
-    const textContent = editor ? editor.getText().trim() : '';
-
     if (!trimmedTitle) {
       setError('Title is required');
       return;
     }
+
+    const textContent = editor ? editor.getText().trim() : '';
 
     if (!textContent) {
       setError('Content is required');
@@ -88,8 +83,8 @@ const NoteEditor = ({ isOpen, mode = 'create', note = null, onSave, onCancel }) 
   };
 
   return (
-    <div className="editor-overlay" role="dialog" aria-modal="true" aria-labelledby="editor-heading">
-      <div className="editor-scrim" onClick={handleCancelClick} />
+    <dialog className="editor-overlay" open aria-labelledby="editor-heading">
+      <button type="button" className="editor-scrim" aria-label="Close editor" onClick={handleCancelClick} />
 
       <div className="editor-drawer">
         <div className="editor-header">
@@ -153,7 +148,7 @@ const NoteEditor = ({ isOpen, mode = 'create', note = null, onSave, onCancel }) 
           </div>
 
           <div className="form-group">
-            <label className="form-label">Content</label>
+            <label className="form-label" htmlFor="note-content-editor">Content</label>
             {editor && (
               <div className="editor-toolbar">
                 <button
@@ -191,7 +186,7 @@ const NoteEditor = ({ isOpen, mode = 'create', note = null, onSave, onCancel }) 
               </div>
             )}
             <div className="editor-content-wrapper">
-              <EditorContent editor={editor} className="tiptap-editor" />
+              <EditorContent id="note-content-editor" editor={editor} className="tiptap-editor" />
             </div>
           </div>
         </div>
@@ -215,8 +210,20 @@ const NoteEditor = ({ isOpen, mode = 'create', note = null, onSave, onCancel }) 
           </button>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 };
 
 export default NoteEditor;
+
+NoteEditor.propTypes = {
+  isOpen: PropTypes.bool.isRequired,
+  mode: PropTypes.oneOf(['create', 'edit']),
+  note: PropTypes.shape({
+    _id: PropTypes.string,
+    title: PropTypes.string,
+    content: PropTypes.string,
+  }),
+  onSave: PropTypes.func.isRequired,
+  onCancel: PropTypes.func.isRequired,
+};

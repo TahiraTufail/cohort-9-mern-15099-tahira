@@ -3,6 +3,8 @@
 const Note = require('../models/Note');
 const logger = require('../config/logger');
 
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 /**
  * @desc    Create a new note linked to the authenticated user
  * @route   POST /api/notes
@@ -46,8 +48,9 @@ const getNotes = async (req, res, next) => {
   try {
     const query = { user: req.user._id };
 
-    if (req.query.search) {
-      query.title = { $regex: req.query.search, $options: 'i' };
+    if (typeof req.query.search === 'string' && req.query.search.trim()) {
+      const safeSearch = escapeRegex(req.query.search.trim().slice(0, 100));
+      query.title = { $regex: safeSearch, $options: 'i' };
     }
 
     const notes = await Note.find(query).sort({ pinned: -1, updatedAt: -1 });

@@ -8,12 +8,14 @@
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test": "jest"
+    "test": "jest",
+    "test:coverage": "jest --coverage --coverageReporters=lcov --coverageReporters=text --runInBand"
   },
   "dependencies": {
     "@tiptap/react": "^3.30.5",
     "@tiptap/starter-kit": "^3.30.5",
     "axios": "^1.19.0",
+    "prop-types": "^15.8.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.2"
